@@ -111,6 +111,5 @@ module Analytics
   end
 end
 
-options = {user_id: '623d564ff67d8500092bfbcb', company_id: '64c0a35664c23a0008499691'}
-worker = Analytics::CompanySurveyExporter.new
-worker.perform(options)
+options = {user_id: '66580e9905d2660008129935', company_id: '64c0a35664c23a0008499691'}
+Analytics::CompanySurveyExporter.new.perform(options)

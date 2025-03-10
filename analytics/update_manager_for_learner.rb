@@ -6,10 +6,10 @@ class UpdateManagerForLearner < ::BaseWorker
   end
 
   def update
-    options[:learners].each do |learner|
-      puts learner
-      learner = UserProfile.find_by 'user_document.email' => learner[:email]
-      manager = UserProfile.find_by 'user_document.email' => learner[:manager_email]
+    options[:learners].each do |hash|
+      puts hash
+      learner = UserProfile.find_by 'user_document.username' => hash['email']
+      manager = UserProfile.find_by 'user_document.username' => hash['manager_email']
 
       learner.set(parent_id: manager.id)
       parent_document = {
@@ -19,24 +19,19 @@ class UpdateManagerForLearner < ::BaseWorker
       learner.set(parent_document: parent_document)
     end
     puts 'Done!'
-
-    verify_update
-  end
-
-  def verify_update
-    options[:learners].each do |learner|
-      puts learner
-      learner = UserProfile.find_by 'user_document.email' => learner[:email]
-      puts learner.parent_document['user_document']['email'] == learner[:manager_email]
-    end
   end
 end
 
-options = {learners: [{
-  email: 'muralidharap@nsdl.com',
-  manager_email: 'vaishaliv@nsdl.com'
-}, {
-  email: 'chetanm@nsdl.com',
-  manager_email: 'rakeshk@nsdl.com'
-}]}
+options = {
+  learners: [{
+    email: 'chandrashekhard@nsdl.com',
+    manager_email: 'abhijeets@nsdl.com'
+  }, {
+    email: 'ravindrah@nsdl.com',
+    manager_email: 'abhijeets@nsdl.com'
+  },{
+    email:'mahendrav@nsdl.com',
+    manager_email: 'khilonab@nsdl.com'
+  }]
+}
 UpdateManagerForLearner.new.perform(options)
