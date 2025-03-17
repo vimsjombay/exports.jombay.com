@@ -27,9 +27,7 @@ class Analytics::CompanyCombinedReportExporter < Analytics::BaseWorker
         package.workbook.add_worksheet(name: 'Likeability') do |sheet|
           likeability_export_sheet(sheet)
         end
-        package.workbook.add_worksheet(name: 'Quiz Response') do |sheet|
-          export_quiz_response(sheet)
-        end
+        create_journey_wise_export_sheet(package)
         package.serialize(file_path)
       end
       AnalyticsMailer.send_report({
@@ -197,7 +195,16 @@ class Analytics::CompanyCombinedReportExporter < Analytics::BaseWorker
     ]
   end
 
-  def export_quiz_response(sheet)
+  def create_journey_wise_export_sheet(package)
+    Journey.where(company_id: options[:company_id]).pluck(:id).each_with_index do |journey_id, index|
+      journey = Journey.find journey_id
+      package.workbook.add_worksheet(name: journey.name.gsub(/[^\w\s]/, '').slice(0, 28)+index.to_s) do |sheet|
+        export_quiz_response(sheet, journey)
+      end
+    end
+  end
+
+  def export_quiz_response(sheet, journey)
     sheet.add_row([
       'Name','Username', 'Email', 'Manager name', 'Manager Username', 'Manager email',
       'Manager mobile', 'Business', 'Employee ID', 'Groups', 'Competency',
@@ -206,10 +213,9 @@ class Analytics::CompanyCombinedReportExporter < Analytics::BaseWorker
 
     cell_style = add_cell_styles(sheet)
     UserContent.where(
-      'user_profile_document.company_document._id': options[:company_id],
+      journey_id: journey.id,
       'content_document.content_type' => 'quiz'
     ).non_archived.each do |user_content|
-      journey = user_content.journey
       puts user_content.id.to_s
       sheet.add_row([
         user_attributes(user_content),
@@ -225,5 +231,7 @@ class Analytics::CompanyCombinedReportExporter < Analytics::BaseWorker
 end
 
 
-options = {company_id: '65fbb03d7eaf8b0008119934', user_id: '5d2459d7d7acb3046edcd72b'}
+# options = {company_id: '65fbb03d7eaf8b0008119934', user_id: '5d2459d7d7acb3046edcd72b'}
+
+options = {user_id: '66580e9905d2660008129935', company_id: '64c0a35664c23a0008499691'}
 Analytics::CompanyCombinedReportExporter.new.perform(options)

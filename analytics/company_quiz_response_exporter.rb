@@ -8,7 +8,7 @@ class Analytics::CompanyQuizResponseExporter < Analytics::BaseWorker
     @company = RailsVger::AuthApi::Company.api_show(options[:company_id])
     create_package()
   end
-  
+
   def reciever_data
     return { name: 'Test User', email: 'test.user@jombay.com' } if user.nil?
     {

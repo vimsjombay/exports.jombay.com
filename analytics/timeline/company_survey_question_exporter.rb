@@ -1,12 +1,11 @@
 module Analytics
   module Timeline
-    class CompanySurveyExporter < Analytics::BaseWorker
+    class CompanySurveyQuestionExporter < Analytics::BaseWorker
       attr_accessor :options, :user, :manager_token_mapping
       def perform(options)
         @options = options
         RequestStore.store[:user_id] = options[:user_id]
         @user = RailsVger::AuthApi::User.api_find(options[:user_id])
-        @manager_token_mapping = {}
         create_package()
       end
 
@@ -20,17 +19,20 @@ module Analytics
 
       def create_package()
         now = Time.now
-        file_name = "Feedback_Status_iDev_Journey_#{Time.now.to_fs(:underscored)}_#{SecureRandom.hex(6)}.xlsx"
+        file_name = "Survey_Export_for_iDev_Journey_#{Time.now.to_fs(:underscored)}_#{SecureRandom.hex(6)}.xlsx"
         file_path = "/tmp/#{file_name}"
         begin
           Axlsx::Package.new do |package|
-            package.workbook.add_worksheet(name: 'Survey Report') do |sheet|
-              create_export_sheet(sheet)
+            package.workbook.add_worksheet(name: 'Learner Export') do |sheet|
+              create_export_sheet_for(sheet, 'question')
+            end
+            package.workbook.add_worksheet(name: 'Manager Export') do |sheet|
+              create_export_sheet_for(sheet, 'manager_question')
             end
             package.serialize(file_path)
           end
           AnalyticsMailer.send_report({
-            subject: 'Feedbacks Export for ABG (iDev Journey)',
+            subject: 'Feedbacks Export for ABG',
             body: 'Your export for surveys ready and attached to this email..',
             time_zone: user.try(:time_zone),
             attachments: {
@@ -50,31 +52,59 @@ module Analytics
         end
       end
 
-      def create_export_sheet sheet
+      def create_manager_export sheet
+
+      end
+
+      def get_responses_for content, user_content, response_key
+        responses = user_content.send("#{response_key}_responses")
+        content.send(response_key.pluralize).pluck(:id).map do |question_id|
+          resp = responses.where(question_id: question_id).first
+          resp.try(:score) || 'NA'
+        end
+      end
+
+      def get_question_headers(content, response_key)
+        content.send(response_key.pluralize).pluck(:body)
+      end
+
+      def create_export_sheet_for sheet, response_key
         sheet.add_row([
-          'Participant Name', 'Username', 'Manager Name',	'Manager Username', 'Business','Competency Name', 'Journey Name',	'Module Name', 'Learner Survey Completion Status',	'Learner Rating',	'Manager Survey Completion Status',	'Manager Rating', "Feedback Links"
-        ], style: add_header_style(sheet))
+          'Participant Name', 'Username', 'Manager Name',	'Manager Username', 'Business', 'Competency Name', 'Journey Name', 'Module Name', 'Learner Survey Completion Status', 'Learner Rating', 'Manager Survey Completion Status', 'Manager Rating'
+        ].flatten, style: add_header_style(sheet))
+
+        ::Timeline::Content.where(
+          company_id: options[:company_id],
+          content_type: 'feedback'
+        ).non_archived.pluck(:id).each do |content_id|
+          content = ::Timeline::Content.find content_id
+          add_responses_for_content(content, sheet, response_key)
+        end
+      end
+
+      def add_responses_for_content content, sheet, response_key
+        sheet.add_row([
+          '', '', '',	'', '',	'',	'',	'',	'',	'',	'',
+          get_question_headers(content, response_key)
+        ].flatten, style: add_header_style(sheet))
 
         cell_style = add_cell_styles(sheet)
-        user_content_ids = ::Timeline::UserContent.where(
-          'user_profile_document.company_document._id' => options[:company_id],
-          'content_document.content_type' => 'feedback'
-        ).non_archived.pluck(:id)
+
+        user_content_ids = content.user_contents.non_archived.pluck(:id)
         total = user_content_ids.size
-        puts "Total: #{total}"
         user_content_ids.each_with_index do |user_content_id, index|
           uc = ::Timeline::UserContent.find user_content_id
           puts "#{index + 1} of #{total} : #{uc.user_profile_document['user_document']['name']}"
           sheet.add_row([
             user_profile_info(uc.user_profile_document),
-            uc.content_document['competency_document']['name'],
+            content.competency_document.try(:name) || 'NA',
             uc.journey.name,
             uc.content_document['title'],
             uc.status,
             uc.score,
             uc.manager_feedback_status,
             uc.manager_feedback_score,
-            get_manager_feedback_link(uc)
+            get_responses_for(content, uc, response_key)
           ].flatten, style: cell_style)
         end
       end
@@ -91,29 +121,9 @@ module Analytics
         parant_document = upd['parent_document'];
         get_attributes(upd) + get_attributes(parant_document) + get_custom_attributes(upd['custom_attributes'])
       end
-
-      def get_manager_feedback_link uc
-        manager_document = uc.user_profile_document['parent_document']
-        return '' if manager_document.nil?
-        user_id = manager_document['user_document']['_id']
-        if manager_token_mapping[user_id].nil?
-          manager = RailsVger::AuthApi::User.api_find(user_id)
-          manager_token_mapping[user_id] = manager.authentication_token
-        end
-        auth_token = manager_token_mapping[user_id]
-        [
-          "#{ENV['IDEV_PLUS_V2_URL']}/companies/#{options[:company_id]}/manager",
-          "/feedback/#{uc.content_id}?auth_token=#{auth_token}"
-        ].join('')
-      rescue => e
-        puts e.message
-        puts e.backtrace
-        ''
-      end
     end
   end
 end
 
-
-options = {user_id: '66580e9905d2660008129935', company_id: '66c496fb695d8cee6a6bb5bf'}
-Analytics::Timeline::CompanySurveyExporter.new.perform(options)
+options = {user_id: '5e045e7f3e1f216b2df06ee6', company_id: '66c496fb695d8cee6a6bb5bf'}
+Analytics::Timeline::CompanySurveyQuestionExporter.new.perform(options)
