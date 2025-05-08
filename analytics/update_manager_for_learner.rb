@@ -8,9 +8,10 @@ class UpdateManagerForLearner < ::BaseWorker
   def update
     options[:learners].each do |hash|
       puts hash
-      learner = UserProfile.find_by 'user_document.username' => hash['email']
-      manager = UserProfile.find_by 'user_document.username' => hash['manager_email']
-
+      learner = UserProfile.where(company_id: hash['company_id'], 'user_document.username' => hash['email']).not_suspended.last
+      manager = UserProfile.where(company_id: hash['company_id'], 'user_document.username' => hash['manager_email']).not_suspended.last
+      next unless learner.present? || manager.present?
+      puts "Updating Learner #{hash['email']} manager #{hash['manager_email']}"
       learner.set(parent_id: manager.id)
       parent_document = {
         _id: manager.id,
@@ -24,14 +25,10 @@ end
 
 options = {
   learners: [{
-    email: 'chandrashekhard@nsdl.com',
-    manager_email: 'abhijeets@nsdl.com'
-  }, {
-    email: 'ravindrah@nsdl.com',
-    manager_email: 'abhijeets@nsdl.com'
-  },{
-    email:'mahendrav@nsdl.com',
-    manager_email: 'khilonab@nsdl.com'
+    email: 'shashikant.tiwari@adityabirla.com',
+    manager_email: 'shashikant.kumar@adityabirla.com',
+    company_id: '65f7cde78c5b910009fe2040'
   }]
 }
+
 UpdateManagerForLearner.new.perform(options)
