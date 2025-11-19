@@ -289,6 +289,6 @@ end
 
 # options = {company_id: '5d22da84cd04666a5efeff7b'}
 
-options = {user_id: '5d8b42f46bdb00de0efad141', company_id: '64c0a35664c23a0008499691'}
+options = {user_id: '5e045e7f3e1f216b2df06ee6', company_id: '64c0a35664c23a0008499691'}
 
 Analytics::CompanyCombinedReportExporter.new.perform(options)

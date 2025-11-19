@@ -201,28 +201,13 @@ module Analytics
         journey_ids = ::Timeline::Journey.where(company_id: options[:company_id]).pluck(:id)
         puts "Journey ids #{journey_ids.count}"
         # Find all journeys and their quizzes
-        all_quizzes = {}
-        journeys_by_id = {}
-
-        # Get all journeys in one query for efficiency
-        ::Timeline::Journey.where(:id.in => journey_ids).each do |journey|
-          journeys_by_id[journey.id] = journey.name
-
-          # Find all quizzes in this journey
-          quiz_contents = ::Timeline::Quiz.where(
-            :milestone_id.in => journey.milestone_ids
-          )
-
-          puts "Quiz: #{quiz_contents.count}"
-
-          quiz_contents.each do |quiz|
-            quiz_title = quiz.title
-            header_key = "#{journey.name} - #{quiz_title}"
-            all_quizzes[header_key] = { 
-              content_id: quiz.id,
-              journey_id: journey.id
-            }
-          end
+        all_quizzes = ::Timeline::Quiz.non_archived.where(company_id: options[:company_id]).map do |quiz|
+          {
+            header_key: "#{quiz.milestone_document['journey_document']['name']} - #{quiz.title}",
+            content_id: quiz.id,
+            journey_id: quiz.milestone_document['journey_document']['_id'],
+            max_score: quiz.questions.sum(:max_score)
+          }
         end
 
         # Create headers for the sheet
@@ -230,7 +215,7 @@ module Analytics
         quiz_headers = []
 
         # Add each quiz as two columns (score and max score)
-        all_quizzes.keys.sort.each do |quiz_header|
+        all_quizzes.pluck(:header_key).each do |quiz_header|
           quiz_headers << quiz_header
           quiz_headers << "Max-score"
         end
@@ -248,41 +233,35 @@ module Analytics
 
         user_profile_ids.each_with_index do |user_profile_id, index|
           puts "#{index + 1} of #{total} UserProfile(#{user_profile_id})"
-          uj = ::Timeline::UserJourney.non_archived.where(user_profile_id: user_profile_id).last
+          uj = ::Timeline::UserJourney.non_archived.find_by(
+            user_profile_id: user_profile_id
+          ) rescue nil
           next if uj.nil?
 
           user_row = user_attributes(uj)
 
           # For each quiz, find the user's score
-          quiz_scores = []
-          all_quizzes.each do |quiz_header, quiz_info|
+          quiz_scores = all_quizzes.map do |quiz_info|
             journey_id = quiz_info[:journey_id]
             content_id = quiz_info[:content_id]
+            max_score = quiz_info[:max_score]
 
             # Find the user content for this specific quiz
-            uc = ::Timeline::UserContent.non_archived.where(
+            uc = ::Timeline::UserContent.non_archived.find_by(
               user_profile_id: user_profile_id,
               content_id: content_id
-            ).last
+            ) rescue nil
 
-            if uc.present?
-              # Use the cached max score from content_document
-              quiz_scores << uc.score
-              quiz_scores << uc.content_document['max_score']
-            else
-              # User hasn't taken this quiz
-              quiz_scores << ''
-              quiz_scores << ''
-            end
+            uc.present? ? [uc.score, max_score] : ['', '']
           end
 
-          sheet.add_row(user_row + quiz_scores, style: cell_style)
+          sheet.add_row(user_row + quiz_scores.flatten, style: cell_style)
         end
       end
     end
   end
 end
 
-options = {user_id: '5d8b42f46bdb00de0efad141', company_id: '66c496fb695d8cee6a6bb5bf'}
+options = {user_id: '5e045e7f3e1f216b2df06ee6', company_id: '66c496fb695d8cee6a6bb5bf'}
 # options = {company_id: '661626ba15a9ef001c2e1192'}
 Analytics::Timeline::CompanyCombinedReportExporter.new.perform(options)

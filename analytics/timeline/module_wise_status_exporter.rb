@@ -45,10 +45,10 @@ module Analytics
     end
 
     def create_export_sheet sheet
-      content_names = Timeline::Content.where(company_id: options[:company_id]).pluck(:title).uniq
-      content_ids = Timeline::Content.where(company_id: options[:company_id]).pluck(:id)
-      journey_ids = Timeline::Journey.where(company_id: options[:company_id]).pluck(:id)
-      user_profile_ids = Timeline::UserJourney.where(
+      content_names = ::Timeline::Content.where(company_id: options[:company_id]).pluck(:title).uniq
+      content_ids = ::Timeline::Content.where(company_id: options[:company_id]).pluck(:id)
+      journey_ids = ::Timeline::Journey.where(company_id: options[:company_id]).pluck(:id)
+      user_profile_ids = ::Timeline::UserJourney.where(
         :journey_id.in => journey_ids
       ).pluck(:user_profile_id).uniq
 
@@ -63,7 +63,7 @@ module Analytics
       total_ids = user_profile_ids.count
       user_profile_ids.each_with_index do |user_profile_id, index|
         puts "#{index + 1} / #{total_ids}"
-        Timeline::UserJourney.where(
+        ::Timeline::UserJourney.where(
           user_profile_id: user_profile_id,
           :journey_id.in => journey_ids
         ).non_archived.each do |user_journey|
@@ -71,7 +71,7 @@ module Analytics
           puts "Getting data for #{ud['user_document']['name']}"
           user_content_statusses = get_attributes(ud) + [user_journey.journey_document['name']]
           content_names.each do |content_tile|
-            user_content = Timeline::UserContent.non_archived.where(
+            user_content = ::Timeline::UserContent.non_archived.where(
               'content_document.title': content_tile,
               user_profile_id: user_profile_id,
               :content_id.in => content_ids

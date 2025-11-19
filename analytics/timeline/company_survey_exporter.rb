@@ -19,7 +19,6 @@ module Analytics
       end
 
       def create_package()
-        now = Time.now
         file_name = "Feedback_Status_iDev_Journey_#{Time.now.to_fs(:underscored)}_#{SecureRandom.hex(6)}.xlsx"
         file_path = "/tmp/#{file_name}"
         begin
@@ -113,7 +112,6 @@ module Analytics
     end
   end
 end
-
 
 options = {user_id: '66580e9905d2660008129935', company_id: '66c496fb695d8cee6a6bb5bf'}
 Analytics::Timeline::CompanySurveyExporter.new.perform(options)

@@ -25,9 +25,9 @@ end
 
 options = {
   learners: [{
-    email: 'shashikant.tiwari@adityabirla.com',
-    manager_email: 'shashikant.kumar@adityabirla.com',
-    company_id: '65f7cde78c5b910009fe2040'
+    email: 'ashwin.rajaram@ril.com',
+    manager_email: 'arun.negi@ril.com',
+    company_id: '668e51da713d80b6c72add15'
   }]
 }
 
