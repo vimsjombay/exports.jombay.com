@@ -1,8 +1,8 @@
-class UpdateCompletionPercentageService < ApplicationService
+class UpdateCompletionPercentageService
   attr_accessor :options
   def call(options)
     @options = options
-    udpate_completion_percentage()
+    update_completion_percentage()
   end
 
   def query_options
@@ -10,10 +10,11 @@ class UpdateCompletionPercentageService < ApplicationService
     if(options[:journey_id])
       query[:id] = options[:journey_id]
     end
+    query
   end
 
-  def udpate_completion_percentage()
-    Timeline::Journey.where(query_options).pluck(:id) do |journey_id|
+  def update_completion_percentage()
+    Timeline::Journey.where(query_options).pluck(:id).each do |journey_id|
       journey = Timeline::Journey.find journey_id
       puts "Journey: #{journey.name}"
       journey.user_journies.set({
@@ -57,11 +58,14 @@ class UpdateCompletionPercentageService < ApplicationService
             participation_percentage: user_journey.calc_participation_percentage,
             completion_percentage: user_journey.calc_completion_percentage
           )
+
+          user_journey.send :update_stats_for_competencies
         end
       end
     end
   end
 end
 
-options = { company_id: '5d53bc0f227e5cc80a7048e8', journey_id: '66e26f8c6af54b001b65bc60'}
-UpdateCompletionPercentageService.new.perform(options)
+# options = { company_id: '5d53bc0f227e5cc80a7048e8', journey_id: '66e26f8c6af54b001b65bc60'}
+options = { company_id: '67e0e837cbd978388cd424a0'}
+UpdateCompletionPercentageService.new.call(options)

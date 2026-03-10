@@ -25,9 +25,13 @@ end
 
 options = {
   learners: [{
-    email: 'ashwin.rajaram@ril.com',
-    manager_email: 'arun.negi@ril.com',
-    company_id: '668e51da713d80b6c72add15'
+    email: 'ankit.kumar@pernod-ricard.com',
+    manager_email: 'test.user+manager123@jombay.com',
+    company_id: '6981d9451a7ec7e02804588d'
+  },{
+    email: 'lalit.kumar@pernod-ricard.com',
+    manager_email: 'test.user+manager123@jombay.com',
+    company_id: '6981d9451a7ec7e02804588d'
   }]
 }
 
